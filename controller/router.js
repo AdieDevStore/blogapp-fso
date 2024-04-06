@@ -12,6 +12,11 @@ blogRouter.get('/', (request, response, next) => {
 blogRouter.post('/', (request, response, next) => {
   const blog = new Blog(request.body)
 
+  if ( !request.body.title || !request.body.author ) {
+    response.status(400).end()
+    return
+  }
+
   blog
     .save()
     .then(result => {
