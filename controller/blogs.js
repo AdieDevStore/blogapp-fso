@@ -12,27 +12,25 @@ const getTokenFrom = req => {
   return null
 }
 
-
 // get one
 blogRouter.get('/', (req, res) => {
   knex
   .select()
   .from('blogs')
   .then(blogs => {
+    if (blogs.length === 0) {
+      return Promise.reject('no data returned')
+    }
     res.status(200).json(blogs)
   })
   .catch(error => {
     console.log(error)
     res.status(400).json({message: 'An error occurred'})
   })
-  .finally(
-    res.status(500)
-  )
 })
 
 // create one post
 blogRouter.post('/', async (req, res) => {
-  // owner_id should never be null
   let {title, author, likes, url} = req.body
 
   const token = getTokenFrom(req)
@@ -55,7 +53,7 @@ blogRouter.post('/', async (req, res) => {
     knex('blogs')
     .insert({title: title, author: author, likes: likes, url: url, owner_id: user.id})
     .then(response => {
-      res.status(201)
+      return res.status(201)
       .json({
         title: title, 
         author: author,
@@ -86,7 +84,7 @@ blogRouter.get('/:id', (req, res) => {
   .where(id)
   .first()
   .then(row => {
-    res.status(201)
+    return res.status(201)
     .json(row)
   })
   .catch(error => {
@@ -136,78 +134,5 @@ blogRouter.delete('/:id', (req, res) => {
     res.status(202).end()
   })
 })
-
-blogRouter.get('/testToken', (req, res) => {
-
-})
-
-// old mongoose code - will be updated to use knex
-
-/*
-// find all
-blogRouter.get('/', async (request, response, next) => {
-  const findAll = await Blog.find({})
-  response.json(findAll).status(200)
-})
-
-// post onen
-blogRouter.post('/', async (request, response, next) => {
-  const blog = new Blog(request.body)
-
-  if (blog.likes != Number) {
-    blog.likes = 0
-  }
-
-  if ( !request.body.title || !request.body.author ) {
-    response.status(400).end()
-    return
-  }
-
-  await blog.save()
-  response.status(201).json(blog)
-})
-
-// find one
-blogRouter.get('/:id', async(request, response) => {
-  const id = request.params.id
-  const checkIfExists = await Blog.exists({_id: id})
-
-  if (!checkIfExists) {
-    response.status(404).end()
-  }
-
-  const findOne = await Blog.findById(id)
-  response.json(findOne).status(200)
-})
-
-// update one
-blogRouter.patch('/:id', async (request, response) => {
-  const id = request.params.id
-  const updated = {
-    likes: request.body.likes
-  }
-  const blogExists = await Blog.exists({_id: id})
-
-  if (!blogExists) {
-    response.status(404).end()
-  }
-
-  await Blog.findByIdAndUpdate(id, updated, {new: true})
-  response.json(updated).status(200)
-})
-
-// delete one
-blogRouter.delete('/delete/:id', async (request, response) => {
-  const id = request.params.id
-  const checkIfExists = await Blog.exists(({_id: id}))
-
-   if (!checkIfExists) {
-    response.status(404).end()
-  }
-
-  await Blog.deleteOne( {_id: id} )
-  response.status(204).end()
-})
-*/
 
 module.exports = blogRouter

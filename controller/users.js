@@ -8,7 +8,12 @@ userRouter.post('/', async(req, res) => {
   const saltRounds = 10 
 
   if (!username || !password) {
-    res.status(406).json({message: 'No username | password'})
+    return res.status(406).json({message: 'No username | password'})
+
+  }
+
+  if (username.length <= 3 || password.length <= 3) {
+    return res.status(406).json({message: 'minimum length requirements not met for username or password'})
   }
   
   const passwordHash = await bcrypt.hash(password, saltRounds)
@@ -22,27 +27,26 @@ userRouter.post('/', async(req, res) => {
     knex('users')
       .insert(user)
       .then(response => {
-        res.status(200).json(user)
+        return res.status(200).json({message: 'user created, redirect'})
       })
   } catch(error) {
-    res.status(400).json({message: 'Bad Request, go away'})
+      return res.status(400).json({message: 'Bad Request, go away'})
   }
   
 })
 
+// move to a separate file
 userRouter.post('/login', async (req, res) => {
   const {username, password} = req.body
 
   if (!username || !password) {
-    res.status(400).json({message: 'no user/password information'})
-    return
+    return res.status(400).json({message: 'no user/password information'})
   }
   
   const user = await knex.select().from('users').where({username: username})
 
   if (user.length === 0) {
-    res.status(404).json({message: 'no user found'})
-    return
+    return res.status(404).json({message: 'no user found'})
   }
 
   const isSafe = await bcrypt.compare(password, user[0].password_hash)
@@ -54,10 +58,10 @@ userRouter.post('/login', async (req, res) => {
   const token = jwt.sign(usersToken, process.env.SECRET)
 
   if (!isSafe) {
-    res.status(401).json({message: 'passowrd incorrect'})
+    return res.status(401).json({message: 'passowrd incorrect'})
     
   } else {
-      res.status(201).send({token, username: user[0].username}).end()
+      return res.status(201).send({token, username: user[0].username}).end()
   }
   
 })
