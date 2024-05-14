@@ -1,8 +1,17 @@
 const blogRouter = require('express').Router()
-const { response } = require('../app')
 const knex = require('../utils/knex')
+const jwt = require('jsonwebtoken')
 
 // to better handle errors Knex favours callbacks 
+
+const getTokenFrom = req => {
+  const authorization = req.get('authorization')
+  if (authorization && authorization.startsWith('Bearer ')) {
+    return authorization.replace('Bearer ', '')
+  }
+  return null
+}
+
 
 // get one
 blogRouter.get('/', (req, res) => {
@@ -22,15 +31,18 @@ blogRouter.get('/', (req, res) => {
 })
 
 // create one post
-blogRouter.post('/', (req, res) => {
-  const {title, author, likes, url} = req.body
-  
-  if (!req.body) {
-    res.status(400)
-    .json({message: 'No data submitted'})
-    .end()
-    return 
+blogRouter.post('/', async (req, res) => {
+  // owner_id should never be null
+  let {title, author, likes, url} = req.body
+
+  const token = getTokenFrom(req)
+  if (!token) {
+    res.status(401).json({message: 'Please log in'})
+    return
   }
+  const decodedToken = jwt.verify(token, process.env.SECRET)
+
+  const user = await knex('users').select().where({id: decodedToken.id}).then(result => result[0])
   
   if (!title || !author || !likes || !url) {
     res.status(400)
@@ -41,14 +53,15 @@ blogRouter.post('/', (req, res) => {
 
   try {
     knex('blogs')
-    .insert({title: title, author: author, likes: likes, url: url})
+    .insert({title: title, author: author, likes: likes, url: url, owner_id: user.id})
     .then(response => {
       res.status(201)
       .json({
         title: title, 
         author: author,
         likes: likes,
-        url: url
+        url: url,
+        owner_id: user.id
       })
     })
   } catch (error) {
@@ -122,6 +135,10 @@ blogRouter.delete('/:id', (req, res) => {
     .then(result => {
     res.status(202).end()
   })
+})
+
+blogRouter.get('/testToken', (req, res) => {
+
 })
 
 // old mongoose code - will be updated to use knex
