@@ -9,13 +9,19 @@ userRouter.post('/', async(req, res) => {
 
   if (!username || !password) {
     return res.status(406).json({message: 'No username | password'})
-
   }
 
   if (username.length <= 3 || password.length <= 3) {
     return res.status(406).json({message: 'minimum length requirements not met for username or password'})
   }
+
+  // check if user exists 
+  const userExists = await knex('users').select().where({username: username})
   
+  if (userExists.length != 0) {
+    return res.status(409).json({message: 'user already exists'})
+  }
+
   const passwordHash = await bcrypt.hash(password, saltRounds)
   
   const user = {
@@ -23,45 +29,18 @@ userRouter.post('/', async(req, res) => {
     password_hash: passwordHash
   }
 
+  const writeUserToDB = async (user) => {
+    return knex('users').insert(user)
+  }
+
   try {
-    knex('users')
-      .insert(user)
-      .then(response => {
-        return res.status(200).json({message: 'user created, redirect'})
-      })
-  } catch(error) {
-      return res.status(400).json({message: 'Bad Request, go away'})
-  }
-  
-})
-
-// move to a separate file
-userRouter.post('/login', async (req, res) => {
-  const {username, password} = req.body
-
-  if (!username || !password) {
-    return res.status(400).json({message: 'no user/password information'})
-  }
-  
-  const user = await knex.select().from('users').where({username: username})
-
-  if (user.length === 0) {
-    return res.status(404).json({message: 'no user found'})
-  }
-
-  const isSafe = await bcrypt.compare(password, user[0].password_hash)
-  const usersToken = {
-    username: user[0].username,
-    id: user[0].id
-  }
-
-  const token = jwt.sign(usersToken, process.env.SECRET)
-
-  if (!isSafe) {
-    return res.status(401).json({message: 'passowrd incorrect'})
-    
-  } else {
-      return res.status(201).send({token, username: user[0].username}).end()
+    const result = await writeUserToDB(user)
+    if (result.error) {
+      throw new DatabaseError('Unable to write to database, ', result.error)
+    }
+    res.status(201).json({messsage: 'user created'})
+  } catch (DatabaseError) {
+    console.log(DatabaseError)
   }
   
 })
