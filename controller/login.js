@@ -10,16 +10,22 @@ loginRouter.post('/', async (req, res) => {
     return res.status(400).json({message: 'no user/password information'})
   }
   
-  const user = await knex.select().from('users').where({username: username})
+  // does not return an array, just a single user
+  const getUser = async (username) => {
+    const result = await knex.select().from('users').where({username: username}).then(result => result[0])
+    return result
+  } 
 
-  if (user.length === 0) {
+  const user = await getUser(username)
+
+  if (!user) {
     return res.status(404).json({message: 'no user found'})
   }
 
-  const isSafe = await bcrypt.compare(password, user[0].password_hash)
+  const isSafe = await bcrypt.compare(password, user.password)
   const usersToken = {
-    username: user[0].username,
-    id: user[0].id
+    username: user.username,
+    id: user.id
   }
 
   const token = jwt.sign(usersToken, process.env.SECRET)
@@ -28,7 +34,7 @@ loginRouter.post('/', async (req, res) => {
     return res.status(401).json({message: 'passowrd incorrect'})
     
   } else {
-      return res.status(201).send({token, username: user[0].username}).end()
+      return res.status(201).send({token, username: user.username}).end()
   }
   
 })
