@@ -12,6 +12,21 @@ const getTokenFrom = req => {
   return null
 }
 
+const decodeToken = async (token) => {
+  const result = await jwt.verify(token, process.env.SECRET)
+  return result
+}
+
+const fetchUser = async (userID) => {
+  const userQuery = await knex('users').select().where({id: userID}).then(result => result[0])
+  return userQuery
+}
+
+const postBlog = async (blogPost) => {
+  const query = await knex('blogs').insert(blogPost)
+  return query
+}
+
 // get one
 blogRouter.get('/', (req, res) => {
   knex
@@ -33,15 +48,6 @@ blogRouter.get('/', (req, res) => {
 blogRouter.post('/', async (req, res) => {
   let {title, author, likes, url} = req.body
 
-  const token = getTokenFrom(req)
-  if (!token) {
-    res.status(401).json({message: 'Please log in'})
-    return
-  }
-  const decodedToken = jwt.verify(token, process.env.SECRET)
-
-  const user = await knex('users').select().where({id: decodedToken.id}).then(result => result[0])
-  
   if (!title || !author || !likes || !url) {
     res.status(400)
     .json({message: 'Data missing'})
@@ -49,21 +55,27 @@ blogRouter.post('/', async (req, res) => {
     return
   }
 
+  const token = getTokenFrom(req)
+  
+  if (!token) {
+    res.status(401).json({message: 'Please log in'})
+    return
+  }
+  const decodedToken = await decodeToken(token)
+  const user = await fetchUser(decodedToken.id) 
+  const post = {
+    title: title,
+    author: author,
+    likes: likes, 
+    url: url, 
+    owner_id: user.id
+  }
+
   try {
-    knex('blogs')
-    .insert({title: title, author: author, likes: likes, url: url, owner_id: user.id})
-    .then(response => {
-      return res.status(201)
-      .json({
-        title: title, 
-        author: author,
-        likes: likes,
-        url: url,
-        owner_id: user.id
-      })
-    })
+    await postBlog(post)
+    res.status(201).json(post)
   } catch (error) {
-    console.log(error)
+    console.log(error.message, error.stack)
     res.status(400).end()
   }
 })
