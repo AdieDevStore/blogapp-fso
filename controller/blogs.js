@@ -1,21 +1,8 @@
 const blogRouter = require('express').Router()
 const knex = require('../utils/knex')
-const jwt = require('jsonwebtoken')
+const getTokenFrom = require('../utils/tokenExtractor').getTokenFrom
+const decodeToken = require('../utils/tokenExtractor').decodeToken
 
-// to better handle errors Knex favours callbacks 
-
-const getTokenFrom = req => {
-  const authorization = req.get('authorization')
-  if (authorization && authorization.startsWith('Bearer ')) {
-    return authorization.replace('Bearer ', '')
-  }
-  return null
-}
-
-const decodeToken = async (token) => {
-  const result = await jwt.verify(token, process.env.SECRET)
-  return result
-}
 
 const fetchUser = async (userID) => {
   const userQuery = await knex('users').select().where({id: userID}).then(result => result[0])
@@ -27,8 +14,17 @@ const postBlog = async (blogPost) => {
   return query
 }
 
-// get one
-blogRouter.get('/', (req, res) => {
+const fetchOneWithID = async (id) => {
+  const result = await knex('blogs').select().where('id', id)
+  return result
+}
+
+const fetchAllPosts = async (id) => {
+  const result = await knex('blogs').select().where({owner_id: id})
+  return result
+}
+
+blogRouter.get('/test_all', (req, res) => {
   knex
   .select()
   .from('blogs')
@@ -45,7 +41,7 @@ blogRouter.get('/', (req, res) => {
 })
 
 // create one post
-blogRouter.post('/', async (req, res) => {
+blogRouter.post('/create', async (req, res) => {
   let {title, author, likes, url} = req.body
 
   if (!title || !author || !likes || !url) {
@@ -61,8 +57,9 @@ blogRouter.post('/', async (req, res) => {
     res.status(401).json({message: 'Please log in'})
     return
   }
+  
   const decodedToken = await decodeToken(token)
-  const user = await fetchUser(decodedToken.id) 
+  const user = await fetchUser(decodedToken.id)
   const post = {
     title: title,
     author: author,
@@ -80,9 +77,9 @@ blogRouter.post('/', async (req, res) => {
   }
 })
 
-// get one row/post
-blogRouter.get('/:id', (req, res) => {
-  const id = req.params
+// only fetches by by ID
+blogRouter.get('/fetch_one/:id', async (req, res) => {
+  const id = req.params.id
 
   if(!id) {
     res.status(404)
@@ -91,22 +88,17 @@ blogRouter.get('/:id', (req, res) => {
     return 
   }
 
-  knex.select()
-  .from('blogs')
-  .where(id)
-  .first()
-  .then(row => {
-    return res.status(201)
-    .json(row)
-  })
-  .catch(error => {
+  try {
+    const result = await fetchOneWithID(id)
+    res.status(200).json(result)
+  } catch (error) {
     console.log(error)
-    res.status(404)
-  }) 
+    res.status(404).json({message: "An error occurred"})
+  }
 })
 
 // update one row/post
-blogRouter.put('/:id', (req, res) => {
+blogRouter.put('/update/:id', (req, res) => {
   const id = req.params.id
   const likes = req.body.likes
 
@@ -125,13 +117,40 @@ blogRouter.put('/:id', (req, res) => {
   .then(result => {
     console.log(result)
     res.status(203)
-    res.redirect('/api/blogs/')
+    res.redirect('/api/blogs/test_all')
   })
 
 })
 
+blogRouter.get('/users_blogs', async (req, res) => {
+  const token = getTokenFrom(req)
+
+  if (!token) {
+    res.status(401).json({message: 'you must be logged in to see all posts'})
+  }
+
+  const decodedToken = await decodeToken(token)
+  try {
+    const user = await fetchUser(decodedToken.id)
+    if (!user) {
+      throw new Error('No user found')
+    }
+    return user
+  } catch (error) {
+    console.log(error)
+    res.status(404).json({message: 'No user found'})
+  }
+
+  try {
+    console.log(await fetchAllPosts(user.id))
+  } catch (error) {
+    console.log(error)
+  }
+
+})
+
 // delete one row/post
-blogRouter.delete('/:id', (req, res) => {
+blogRouter.delete('/delete/:id/', (req, res) => {
   const id = req.params.id
 
   if (!id) {
