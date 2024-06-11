@@ -1,7 +1,7 @@
 const userRouter = require('express').Router()
 const knex = require('../utils/knex')
 const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
+
 
 userRouter.post('/', async(req, res) => {
   const {username, password} = req.body

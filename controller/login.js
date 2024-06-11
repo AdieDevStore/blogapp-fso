@@ -16,7 +16,7 @@ const jwt = require('jsonwebtoken')
 
   const createToken = (username, id) => {
     const token = {username: username, id: id}
-    return jwt.sign(token, process.env.SECRET)
+    return jwt.sign(token, process.env.SECRET, {expiresIn: '1m'})
   }
 
 loginRouter.post('/', async (req, res) => {
@@ -38,7 +38,7 @@ loginRouter.post('/', async (req, res) => {
       res.status(401).json({message: 'passowrd incorrect'})
     } else {
       const token = createToken(user.username, user.id)
-      return res.status(201).send({token, username: user.username}).end()
+      return res.status(201).json({token, username: user.username})
     }
   } catch (error) {
     console.log(error)

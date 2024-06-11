@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "baseUrl": "./",
   "scripts": {
     "dev-server": "nodemon index.js",
     "test": "node:test"
