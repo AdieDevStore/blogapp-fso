@@ -16,7 +16,7 @@ const jwt = require('jsonwebtoken')
 
   const createToken = (username, id) => {
     const token = {username: username, id: id}
-    return jwt.sign(token, process.env.SECRET, {expiresIn: '1m'})
+    return jwt.sign(token, process.env.SECRET, {expiresIn: '1h'})
   }
 
 loginRouter.post('/', async (req, res) => {

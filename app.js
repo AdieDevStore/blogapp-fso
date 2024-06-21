@@ -18,6 +18,9 @@ app.use('/api/login', loginRouter)
 app.use('/api/allposts', allPosts)
 app.use('/api/blogs', tokenAuthenticator ,blogRouter)
 app.use(errorHandler)
+app.all('*', (req, res) => {
+  res.status(404).send('Page not found')
+})
 
 
 module.exports = app

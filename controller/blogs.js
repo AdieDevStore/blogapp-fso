@@ -35,8 +35,15 @@ const updatePost = async (id, body) => {
   return result
 }
 
+const checkUserValid = async (postId, userID) => {
+  const post = await knex('blogs').where('id', postId).update(body)
+  if (userID != post.owner_id) {
+    return false
+  } else return true
+}
 
-blogRouter.post('/create', async (req, res) => {
+
+blogRouter.post('/create', async (req, res, next) => {
   let {title, author, likes, url} = req.body
 
   const user = await fetchUser(req.id)
@@ -48,85 +55,75 @@ blogRouter.post('/create', async (req, res) => {
     owner_id: user.id
   }
 
+  // if fails validation, 400 error
   if (!title || !author || !likes || !url) {
-    res.status(400)
-    .json({message: 'Data missing'})
-    .end()
-    return
+    const error = new Error("Outstanding data")
+    return next(error)
   }
 
+  // this would only really fail if the DB is down/changed/doesnt exist
+  // if it fails, use error code 500...something is seriosly wrong
   try {
     await postBlog(post)
     res.status(201).json(post)
   } catch (error) {
-    console.log(error.message, error.stack)
-    res.status(400).end()
+    return next(error)
   }
 })
 
-// only fetches by by ID
-blogRouter.get('/fetch_one/:id', async (req, res) => {
+// only fetches by by ID - should this route be public? 
+blogRouter.get('/fetch_one/:id', async (req, res, next) => {
   const id = req.params.id
-
-  if(!id) {
-    res.status(404)
-    .json({message: 'data missing'})
-    .end()
-    return 
-  }
 
   try {
     const result = await fetchOneWithID(id)
+    if (result.length === 0) {
+      throw Error('No content')
+    }
     res.status(200).json(result)
   } catch (error) {
-    console.log(error)
-    res.status(404).json({message: "An error occurred"})
+    return next(error)
   }
 })
 
 // update one row/post
-blogRouter.put('/update/:id', async (req, res) => {
-  const token = getTokenFrom(req)
-  const id = req.params.id
+blogRouter.put('/update/:id', async (req, res, next) => {
+  const {username, id} = req
+  const postId = req.params.id
 
-  if (!token) {
-    res.status(401).json({message: 'User not authorised'})
-    return
+  if (!username || id) {
+    const error = new Error('No user logged in')
+    return next(error)
   }
 
   if (!req.body ) {
-    res.status(400)
-    .json({message: 'no data received'})
-    return
+    const error = new Error('No data received')
+    return next(error)
   }
 
   try {
-    await updatePost(id, req.body)
+    const userIsAllowed = checkUserValid(postId, id)
+    if (!userIsAllowed) {
+      throw new Error('This post does not belong to the user')
+    }
+
+    await updatePost(postId, req.body)
     res.status(202).end()
   } catch (error) {
-    console.log(error)
-    res.status(204).json({message: 'No content'})
+    return next(error)
   }
 
 })
 
-blogRouter.get('/users_blogs', async (req, res) => {
-  const token = getTokenFrom(req)
-
-  if (!token) {
-    res.status(401).json({message: 'User not authorised'})
-    return
-  }
-
-  const decodedToken = await decodeToken(token)
+blogRouter.get('/users_blogs', async (req, res, next) => {
+  const {username, id} = req
   
   try {
-    const user = await fetchUser(decodedToken.id)
+    const user = await fetchUser(id)
     const posts = await fetchAllPosts(user.id)
     res.status(200).json(posts)
   } catch (error) {
-    console.log(error)
-    res.status(404).json({message: 'No user found'})
+    next(error)
   }
 
 })
