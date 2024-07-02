@@ -5,8 +5,11 @@
   "main": "index.js",
   "baseUrl": "./",
   "scripts": {
+    "frontend-dev": "cd ./frontend && vite",
+    "dev-combined": "concurrently \"npm run dev-server \" \"npm run frontend-dev\"",
     "dev-server": "nodemon index.js",
-    "test": "node:test"
+    "test": "node:test",
+    "build": "cd ./frontend && vite build"
   },
   "keywords": [],
   "author": "",
@@ -20,11 +23,22 @@
     "knex": "^3.1.0",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",
-    "sequelize-auto": "^0.8.8"
+    "sequelize-auto": "^0.8.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "nodemon": "^3.1.0",
-    "supertest": "^6.3.4"
+    "supertest": "^6.3.4",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "vite": "^5.3.1"
   }
 }
