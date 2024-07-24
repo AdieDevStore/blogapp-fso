@@ -21,6 +21,7 @@ const jwt = require('jsonwebtoken')
 
 loginRouter.post('/', async (req, res) => {
   const {username, password} = req.body
+  console.log(req.body)
 
   if (!username || !password) {
     return res.status(400).json({message: 'no user/password information'})
@@ -29,16 +30,17 @@ loginRouter.post('/', async (req, res) => {
   const user = await getUser(username)
 
   if (!user) {
-    return res.status(400).json({message: 'no user exists'})
+    return res.status(404).json({message: 'no user found'})
   }
 
   try {
     const match = await checkPassword(password, user.password_hash)
+    console.log(match)
     if (!match) {
       res.status(401).json({message: 'passowrd incorrect'})
     } else {
       const token = createToken(user.username, user.id)
-      return res.status(201).json({token, username: user.username})
+      return res.status(201).send({token, username: user.username})
     }
   } catch (error) {
     console.log(error)
